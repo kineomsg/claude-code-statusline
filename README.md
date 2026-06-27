@@ -2,6 +2,9 @@
 
 A statusline for [Claude Code](https://claude.ai/code) that shows rate limits, context usage, and monthly cost in Japanese Yen.
 
+> **What is the Claude Code statusline?**
+> Claude Code has a built-in [`statusLine`](https://docs.anthropic.com/en/docs/claude-code/settings) feature that runs a shell command and displays its output at the bottom of the terminal UI. This repo provides that command — a script that reads Claude Code's internal JSON feed and formats it into a compact status bar.
+
 ## Preview
 
 ```
@@ -40,7 +43,41 @@ Session:45%(14:30) Week:2d30m(3d12h) Ctx:▰▰▱▱▱40% Cost:!!▰▰▰▰�
 | Git Bash (Windows) | `statusline.sh` | `jq`, `curl`, `bc` |
 | Native Windows | `statusline.ps1` | PowerShell 5.1+ (no extra installs needed) |
 
-## Setup
+<details>
+<summary>Installing dependencies</summary>
+
+**Ubuntu / Debian:** `sudo apt install jq bc curl`  
+**macOS:** `brew install jq bc curl`  
+**Arch Linux:** `sudo pacman -S jq bc curl`  
+**Windows:** PowerShell version needs no extras.
+
+</details>
+
+## Quick Install
+
+### Linux / macOS / WSL
+
+```bash
+git clone https://github.com/kineomsg/claude-code-statusline.git
+cd claude-code-statusline
+bash install.sh
+```
+
+Then restart Claude Code. That's it.
+
+### Native Windows (PowerShell)
+
+```powershell
+git clone https://github.com/kineomsg/claude-code-statusline.git
+cd claude-code-statusline
+Copy-Item statusline.ps1 "$env:USERPROFILE\.claude\statusline.ps1"
+```
+
+Then follow the manual settings step below.
+
+---
+
+## Manual Setup
 
 ### Linux / macOS / WSL
 
