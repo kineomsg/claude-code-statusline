@@ -19,23 +19,26 @@ function Get-ResetDH($ts) {
     return "${h}h${m}m"
 }
 
-$h5_pct   = [int]($data.rate_limits.five_hour.used_percentage)
-$h5_reset = $data.rate_limits.five_hour.resets_at
-$d7_pct   = [int]($data.rate_limits.seven_day.used_percentage)
-$d7_reset = $data.rate_limits.seven_day.resets_at
-$ctx_pct  = [int]($data.context_window.used_percentage)
+$h5_pct_raw  = $data.rate_limits.five_hour.used_percentage
+$h5_reset    = $data.rate_limits.five_hour.resets_at
+$d7_pct_raw  = $data.rate_limits.seven_day.used_percentage
+$d7_reset    = $data.rate_limits.seven_day.resets_at
+$ctx_pct_raw = $data.context_window.used_percentage
 
 $out = ""
-if ($h5_pct) {
+if ($null -ne $h5_pct_raw) {
+    $h5_pct = [Math]::Floor([double]$h5_pct_raw)
     $rst = Get-ResetHM $h5_reset
     $out = "Session:${h5_pct}%(${rst})"
 }
-if ($d7_pct) {
+if ($null -ne $d7_pct_raw) {
+    $d7_pct = [Math]::Floor([double]$d7_pct_raw)
     $rst = Get-ResetDH $d7_reset
     if ($out) { $out += " " }
     $out += "Week:${d7_pct}%(${rst})"
 }
-if ($ctx_pct) {
+if ($null -ne $ctx_pct_raw) {
+    $ctx_pct = [Math]::Floor([double]$ctx_pct_raw)
     $filled = [Math]::Floor($ctx_pct / 20)
     $bar = ("▰" * $filled) + ("▱" * (5 - $filled))
     if ($out) { $out += " " }
@@ -43,7 +46,8 @@ if ($ctx_pct) {
 }
 
 # JPY rate cache (weekly refresh via ECB/frankfurter.app)
-$jpyCachePath = "$HOME\.claude\jpy_rate.cache"
+$jpyCachePath = Join-Path $HOME ".claude" "jpy_rate.cache"
+$null = New-Item -ItemType Directory -Force -Path (Join-Path $HOME ".claude")
 $jpyRate = $null
 if (Test-Path $jpyCachePath) {
     $parts = (Get-Content $jpyCachePath -Raw).Trim() -split ":", 2
@@ -53,7 +57,7 @@ if (Test-Path $jpyCachePath) {
 }
 if ($null -eq $jpyRate) {
     try {
-        $resp = Invoke-RestMethod -Uri "https://api.frankfurter.app/latest?from=USD&to=JPY" -TimeoutSec 3
+        $resp = Invoke-RestMethod -Uri "https://api.frankfurter.app/latest?from=USD&to=JPY" -TimeoutSec 1
         $jpyRate = $resp.rates.JPY
         "${now}:${jpyRate}" | Set-Content $jpyCachePath
     } catch {}
@@ -62,7 +66,7 @@ if ($null -eq $jpyRate) {
 # Budget tracking (monthly, max ¥10,000)
 $costUsd = $data.cost.total_cost_usd
 if ($null -ne $costUsd -and $null -ne $jpyRate) {
-    $budgetCachePath = "$HOME\.claude\cost_budget.cache"
+    $budgetCachePath = Join-Path $HOME ".claude" "cost_budget.cache"
     $curMonth = (Get-Date).ToString("yyyy-MM")
     $cumulativeUsd = 0.0
     $lastSessionUsd = 0.0

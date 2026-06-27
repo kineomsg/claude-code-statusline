@@ -42,16 +42,18 @@ ctx_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty' | cut
 
 # JPY rate cache (weekly refresh via ECB/frankfurter.app)
 JPY_CACHE="$HOME/.claude/jpy_rate.cache"
+mkdir -p "$HOME/.claude"
 jpy_rate=""
 if [ -f "$JPY_CACHE" ]; then
     cached_ts=$(cut -d: -f1 "$JPY_CACHE")
     cached_rate=$(cut -d: -f2 "$JPY_CACHE")
+    cached_ts="${cached_ts:-0}"
     if [ $(( now - cached_ts )) -lt 604800 ] && [ -n "$cached_rate" ]; then
         jpy_rate="$cached_rate"
     fi
 fi
 if [ -z "$jpy_rate" ]; then
-    fetched=$(curl -sf --max-time 3 "https://api.frankfurter.app/latest?from=USD&to=JPY" | jq -r '.rates.JPY // empty')
+    fetched=$(curl -sf --max-time 1 "https://api.frankfurter.app/latest?from=USD&to=JPY" | jq -r '.rates.JPY // empty')
     if [ -n "$fetched" ]; then
         jpy_rate="$fetched"
         echo "${now}:${fetched}" > "$JPY_CACHE"
