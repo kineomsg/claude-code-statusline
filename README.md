@@ -24,7 +24,7 @@ Session:45%(14:30) Week:2d30m(3d12h) Ctx:▰▰▱▱▱40% Cost:!!▰▰▰▰�
 | `Session:XX%(HH:MM)` | 5-hour rate limit usage and reset time |
 | `Week:XX%(Xd Xh)` | 7-day rate limit usage and time until reset |
 | `Ctx:▰▰▱▱▱XX%` | Context window usage (5-segment bar) |
-| `Cost:▰▱▱▱▱$X.XX(¥X.Xk/¥10k)` | Monthly cost in USD + JPY with budget bar |
+| `Cost:▰▱▱▱▱$X.XX(¥X.Xk/¥10k)` | Monthly cost in USD + JPY with budget bar (estimated) |
 
 **Cost display behavior:**
 - Accumulates cost across sessions within the same month
@@ -152,6 +152,8 @@ $pct = [Math]::Min([int]($totalJpy * 100 / 10000), 100)  # change 10000
 ## Notes
 
 - **Subscription plans (Pro/Max) do not expose cost data** — the Cost field will not appear. Only API key usage and Azure AI Foundry are supported.
+- Costs shown are estimates based on Claude Code's reported token usage and may not exactly match your Anthropic invoice
+- JPY conversion uses a weekly-cached exchange rate from ECB and will not reflect real-time fluctuations
 - When using Azure AI Foundry, costs are estimated based on Anthropic's public pricing and may differ from your actual Azure bill
 
 ## License
