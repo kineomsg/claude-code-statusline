@@ -149,6 +149,35 @@ budget_jpy=10000  # change this value
 $pct = [Math]::Min([int]($totalJpy * 100 / 10000), 100)  # change 10000
 ```
 
+## Troubleshooting
+
+### Statusline doesn't appear in Cursor (or VS Code integrated terminal)
+
+GUI apps on macOS launch with a minimal PATH that often excludes Homebrew's directories (`/opt/homebrew/bin`, `/usr/local/bin`). If `jq`, `bc`, or `curl` can't be found, the script produces no output and the statusline row disappears entirely.
+
+The script already prepends these paths automatically. If it still doesn't appear, verify the tools are installed:
+
+```bash
+which jq bc curl
+```
+
+If any are missing, install them:
+
+```bash
+brew install jq bc curl   # macOS
+sudo apt install jq bc curl  # Ubuntu / Debian
+```
+
+### Statusline appears in a normal terminal but not in Cursor
+
+Run the script manually in Cursor's terminal to see any errors:
+
+```bash
+echo '{}' | ~/.claude/statusline.sh
+```
+
+If you get `command not found` for `jq` or `bc`, installing the missing tool will fix it.
+
 ## Notes
 
 - **Subscription plans (Pro/Max) do not expose cost data** — the Cost field will not appear. Only API key usage and Azure AI Foundry are supported.
