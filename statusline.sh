@@ -1,7 +1,7 @@
 #!/bin/bash
 # Prepend common Homebrew paths so tools like jq/bc/curl are found
 # when launched from GUI apps (Cursor, VS Code) that don't inherit the shell PATH
-export PATH="/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+export PATH="/usr/local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/home/linuxbrew/.linuxbrew/bin:$HOME/.local/bin:/snap/bin:$PATH"
 
 input=$(cat)
 now=$(date +%s)

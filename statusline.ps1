@@ -15,7 +15,7 @@ function Get-ResetDH($ts) {
     $d = [Math]::Floor($diff / 86400)
     $h = [Math]::Floor(($diff % 86400) / 3600)
     $m = [Math]::Floor(($diff % 3600) / 60)
-    if ($d -gt 0) { return "${d}d${m}m" }
+    if ($d -gt 0) { return "${d}d${h}h" }
     return "${h}h${m}m"
 }
 
