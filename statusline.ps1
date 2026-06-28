@@ -55,12 +55,16 @@ if (Test-Path $jpyCachePath) {
         $jpyRate = [double]$parts[1]
     }
 }
+$jpyRateFallback = $false
 if ($null -eq $jpyRate) {
     try {
         $resp = Invoke-RestMethod -Uri "https://api.frankfurter.app/latest?from=USD&to=JPY" -TimeoutSec 1
         $jpyRate = $resp.rates.JPY
         "${now}:${jpyRate}" | Set-Content $jpyCachePath
-    } catch {}
+    } catch {
+        $jpyRate = 160
+        $jpyRateFallback = $true
+    }
 }
 
 # Budget tracking (monthly, max ¥10,000)
@@ -92,11 +96,12 @@ if ($null -ne $costUsd -and $null -ne $jpyRate) {
         $filled = [Math]::Floor($pct / 20)
         $bar    = ("▰" * $filled) + ("▱" * (5 - $filled))
         $warn   = if ($pct -ge 100) { "!!" } else { "" }
+        $approx = if ($jpyRateFallback) { "~" } else { "" }
         $costFmt  = "{0:F2}" -f $totalUsd
         $jpyWhole = [int]($totalJpy / 1000)
         $jpyDec   = [int](($totalJpy % 1000) / 100)
         if ($out) { $out += " " }
-        $out += "Cost:${warn}${bar}`$${costFmt}(¥${jpyWhole}.${jpyDec}k/¥10k)"
+        $out += "Cost:${warn}${bar}`$${costFmt}(${approx}¥${jpyWhole}.${jpyDec}k/¥10k)"
     }
 }
 

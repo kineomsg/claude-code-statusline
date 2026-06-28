@@ -52,11 +52,15 @@ if [ -f "$JPY_CACHE" ]; then
         jpy_rate="$cached_rate"
     fi
 fi
+jpy_rate_fallback=0
 if [ -z "$jpy_rate" ]; then
     fetched=$(curl -sf --max-time 1 "https://api.frankfurter.app/latest?from=USD&to=JPY" | jq -r '.rates.JPY // empty')
     if [ -n "$fetched" ]; then
         jpy_rate="$fetched"
         echo "${now}:${fetched}" > "$JPY_CACHE"
+    else
+        jpy_rate="160"
+        jpy_rate_fallback=1
     fi
 fi
 
@@ -114,7 +118,9 @@ if [ -n "$cost_usd" ] && [ -n "$jpy_rate" ]; then
         [ -n "$out" ] && out="$out "
         warn=""
         [ $pct -ge 100 ] && warn="!!"
-        out="${out}Cost:${warn}${bar}\$${cost_fmt}(¥${jpy_whole}.${jpy_dec}k/¥10k)"
+        approx=""
+        [ "$jpy_rate_fallback" = "1" ] && approx="~"
+        out="${out}Cost:${warn}${bar}\$${cost_fmt}(${approx}¥${jpy_whole}.${jpy_dec}k/¥10k)"
     fi
 fi
 
