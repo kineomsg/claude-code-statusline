@@ -7,14 +7,22 @@ A statusline for [Claude Code](https://claude.ai/code) that shows model, rate li
 
 ## Preview
 
-```
-Sonnet4.6(high) Session:45%(14:30) Week:20%(2d3h) Ctx:▰▰▱▱▱40% Acct:▰▱▱▱▱15%
-```
-
-API key user, over budget:
+Subscription user (Pro/Max):
 
 ```
-!!Opus4.8(high) Ctx:▰▰▰▱▱60% Cost:!!▰▰▰▰▰$3.20(¥510/¥500)
+Sonnet4.6(high) Session:45%(14:30) Week:20%(2d3h) Ctx:▰▰▱▱▱40%
+```
+
+API key user with spending limit:
+
+```
+Sonnet4.6(high) Ctx:▰▰▱▱▱40% Cost:▰▱▱▱▱$0.45(¥67/¥500) Acct:▰▱▱▱▱15%
+```
+
+API key user, over daily budget:
+
+```
+!!Opus4.8(high) Ctx:▰▰▰▱▱60% Cost:!!▰▰▰▰▰$3.20(¥510/¥500) Acct:▰▰▰▱▱55%
 ```
 
 ## Features
@@ -26,7 +34,7 @@ API key user, over budget:
 | `Week:XX%(XdXh)` | 7-day rate limit usage and time until reset |
 | `Ctx:▰▰▱▱▱XX%` | Context window usage (5-segment bar) |
 | `Cost:▰▱▱▱▱$X.XX(¥XXX/¥500)` | Daily cost in USD + JPY with budget bar |
-| `Acct:▰▱▱▱▱XX%` | Account monthly usage via Anthropic OAuth API (subscription only) |
+| `Acct:▰▱▱▱▱XX%` | Account spending vs. monthly limit (API key users with a spending limit set) |
 
 **Cost display behavior:**
 - Accumulates cost across sessions within the same day
@@ -188,7 +196,7 @@ If you get `command not found` for `jq` or `bc`, installing the missing tool wil
 - **API key and Azure AI Foundry** show the Cost field reflecting actual token spend
 - JPY conversion uses a weekly-cached exchange rate from ECB and will not reflect real-time fluctuations. If the rate hasn't been fetched yet, the Cost field is simply not shown
 - When using Azure AI Foundry, costs are estimated based on Anthropic's public pricing and may differ from your actual Azure bill
-- The `Acct:` field requires an active Claude.ai OAuth session (`~/.claude/.credentials.json`) and is not available to API key users
+- The `Acct:` field shows API account spending against your monthly limit — only visible when a spending limit is configured in the [Anthropic Console](https://console.anthropic.com/) and the OAuth credentials are available in `~/.claude/.credentials.json`
 
 ## License
 
