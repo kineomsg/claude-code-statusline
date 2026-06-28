@@ -29,7 +29,8 @@ eval "$(echo "$input" | jq -r '
     "d7_pct="        + (if .rate_limits.seven_day.used_percentage != null then (.rate_limits.seven_day.used_percentage | floor | tostring) else "" end | @sh) + "\n" +
     "d7_reset="      + (if .rate_limits.seven_day.resets_at != null then (.rate_limits.seven_day.resets_at | tostring) else "" end | @sh) + "\n" +
     "ctx_pct="       + (if .context_window.used_percentage != null then (.context_window.used_percentage | floor | tostring) else "" end | @sh) + "\n" +
-    "cost_usd="      + (if .cost.total_cost_usd != null then (.cost.total_cost_usd | tostring) else "" end | @sh)
+    "cost_usd="      + (if .cost.total_cost_usd != null then (.cost.total_cost_usd | tostring) else "" end | @sh) + "\n" +
+    "has_rl="        + (if .rate_limits != null then "1" else "" end | @sh)
 ' 2>/dev/null)"
 
 fmt_reset_hm() {
@@ -131,6 +132,9 @@ if [ -n "$h5_pct" ]; then
     c=$(color_for_pct "$h5_pct")
     [ -n "$out" ] && out="$out "
     out="${out}${C_DIM}Session:${C_RESET}${c}${h5_pct}%${C_DIM}(${rst})${C_RESET}"
+elif [ -z "$has_rl" ] && [ -n "$model_display" ] && [ "$(echo "${cost_usd:-0} == 0" | bc 2>/dev/null)" = "1" ]; then
+    [ -n "$out" ] && out="$out "
+    out="${out}${C_DIM}Session:-${C_RESET}"
 fi
 
 # Week rate limit
@@ -139,6 +143,9 @@ if [ -n "$d7_pct" ]; then
     c=$(color_for_pct "$d7_pct")
     [ -n "$out" ] && out="$out "
     out="${out}${C_DIM}Week:${C_RESET}${c}${d7_pct}%${C_DIM}(${rst})${C_RESET}"
+elif [ -z "$has_rl" ] && [ -n "$model_display" ] && [ "$(echo "${cost_usd:-0} == 0" | bc 2>/dev/null)" = "1" ]; then
+    [ -n "$out" ] && out="$out "
+    out="${out}${C_DIM}Week:-${C_RESET}"
 fi
 
 # Context window

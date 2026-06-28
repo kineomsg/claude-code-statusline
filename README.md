@@ -7,10 +7,16 @@ A statusline for [Claude Code](https://claude.ai/code) that shows model, rate li
 
 ## Preview
 
-Subscription user (Pro/Max):
+Subscription user (Pro):
 
 ```
 Sonnet4.6(high) Session:45%(14:30) Week:20%(2d3h) Ctx:▰▰▱▱▱40%
+```
+
+Subscription user (Max — rate limits not reported by API):
+
+```
+Sonnet4.6(high) Session:- Week:- Ctx:▰▰▱▱▱40%
 ```
 
 API key user with spending limit:
@@ -30,8 +36,8 @@ API key user, over daily budget:
 | Field | Description |
 |---|---|
 | `Sonnet4.6(high)` / `!!Opus4.8` | Model name and effort level; Opus is prefixed with `!!` |
-| `Session:XX%(HH:MM)` | 5-hour rate limit usage and reset time (wall clock) |
-| `Week:XX%(XdXh)` | 7-day rate limit usage and time until reset |
+| `Session:XX%(HH:MM)` / `Session:-` | 5-hour rate limit usage and reset time; shows `-` on Max when the API doesn't report limits |
+| `Week:XX%(XdXh)` / `Week:-` | 7-day rate limit usage and time until reset; shows `-` on Max when the API doesn't report limits |
 | `Ctx:▰▰▱▱▱XX%` | Context window usage (5-segment bar) |
 | `Cost:▰▱▱▱▱$X.XX(¥XXX/¥500)` | Daily cost in USD + JPY with budget bar |
 | `Acct:▰▱▱▱▱XX%` | Account spending vs. monthly limit (API key users with a spending limit set) |
@@ -193,6 +199,7 @@ If you get `command not found` for `jq` or `bc`, installing the missing tool wil
 ## Notes
 
 - **Subscription plans (Pro/Max)** do not show the Cost field — `cost.total_cost_usd` is always 0 for subscribers
+- **Claude.ai Max** subscribers see `Session:-` and `Week:-` — the Anthropic API currently does not report rate limit data for Max accounts. This is a known platform limitation, not a script bug
 - **API key and Azure AI Foundry** show the Cost field reflecting actual token spend
 - JPY conversion uses a weekly-cached exchange rate from ECB and will not reflect real-time fluctuations. If the rate hasn't been fetched yet, the Cost field is simply not shown
 - When using Azure AI Foundry, costs are estimated based on Anthropic's public pricing and may differ from your actual Azure bill
