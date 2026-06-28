@@ -1,6 +1,6 @@
 # claude-code-statusline
 
-A statusline for [Claude Code](https://claude.ai/code) that shows rate limits, context usage, and monthly cost in Japanese Yen.
+A statusline for [Claude Code](https://claude.ai/code) that shows model, rate limits, context usage, and daily cost in Japanese Yen.
 
 > **What is the Claude Code statusline?**
 > Claude Code has a built-in [`statusLine`](https://docs.anthropic.com/en/docs/claude-code/settings) feature that runs a shell command and displays its output at the bottom of the terminal UI. This repo provides that command — a script that reads Claude Code's internal JSON feed and formats it into a compact status bar.
@@ -8,31 +8,34 @@ A statusline for [Claude Code](https://claude.ai/code) that shows rate limits, c
 ## Preview
 
 ```
-Session:45%(14:30) Week:2d30m(3d12h) Ctx:▰▰▱▱▱40% Cost:▰▰▰▱▱$0.15(¥5.0k/¥10k)
+Sonnet4.6(high) Session:45%(3h20m) Week:20%(2d3h) Ctx:▰▰▱▱▱40% Cost:▰▱▱▱▱~$0.15(¥230/¥500)
 ```
 
-Over budget:
+Over budget (Opus, subscription):
 
 ```
-Session:45%(14:30) Week:2d30m(3d12h) Ctx:▰▰▱▱▱40% Cost:!!▰▰▰▰▰$70.00(¥10.8k/¥10k)
+!!Opus4.8(high) Session:72%(1h5m) Week:55%(1d3h) Ctx:▰▰▰▱▱60% Cost:!!▰▰▰▰▰~$3.20(¥480/¥500) Acct:▰▰▱▱▱35%
 ```
 
 ## Features
 
 | Field | Description |
 |---|---|
-| `Session:XX%(HH:MM)` | 5-hour rate limit usage and reset time |
-| `Week:XX%(Xd Xh)` | 7-day rate limit usage and time until reset |
+| `Sonnet4.6(high)` / `!!Opus4.8` | Model name and effort level; Opus is prefixed with `!!` |
+| `Session:XX%(XhYm)` | 5-hour rate limit usage and time until reset |
+| `Week:XX%(XdXh)` | 7-day rate limit usage and time until reset |
 | `Ctx:▰▰▱▱▱XX%` | Context window usage (5-segment bar) |
-| `Cost:▰▱▱▱▱$X.XX(¥X.Xk/¥10k)` | Monthly cost in USD + JPY with budget bar (estimated) |
+| `Cost:▰▱▱▱▱~$X.XX(¥XXX/¥500)` | Daily cost in USD + JPY with budget bar (`~` on subscription plans) |
+| `Acct:▰▱▱▱▱XX%` | Account monthly usage via Anthropic OAuth API (subscription only) |
 
 **Cost display behavior:**
-- Accumulates cost across sessions within the same month
-- Resets automatically on the 1st of each month
+- Accumulates cost across sessions within the same day
+- Resets automatically at midnight each day
 - Exchange rate fetched weekly from ECB (European Central Bank) via [frankfurter.app](https://www.frankfurter.app/)
-- If the exchange rate API is unreachable (e.g. corporate network restrictions), falls back to ¥160/USD and shows a `~` prefix: `Cost:▰▰▰▱▱$3.42(~¥3.4k/¥10k)`
-- **Not shown on subscription plans (Pro/Max)** — cost data is only available on API key or Azure AI Foundry usage
-- Shows `!!` prefix when the ¥10,000 monthly budget is exceeded
+- If the exchange rate hasn't been fetched yet, the Cost field is not shown until the background refresh completes
+- **Shown on subscription plans (Pro/Max)** with a `~` prefix indicating it's an API-equivalent estimate, not actual billing
+- **Shown on API key / Azure AI Foundry** without the `~` prefix (reflects actual cost)
+- Shows `!!` prefix when the ¥500 daily budget is exceeded
 
 ## Platform Support
 
@@ -119,7 +122,8 @@ Add to `%USERPROFILE%\.claude\settings.json`:
 ├── statusline.sh          # Linux / macOS / WSL
 ├── statusline.ps1         # Native Windows
 ├── jpy_rate.cache         # Exchange rate cache (auto-generated)
-└── cost_budget.cache      # Monthly cost cache (auto-generated)
+├── oauth_usage.cache      # Account usage cache (auto-generated, subscription only)
+└── cost_budget.cache      # Daily cost cache (auto-generated)
 ```
 
 ### Cache file formats
@@ -132,22 +136,22 @@ e.g. 1751234567:157.23
 
 **`cost_budget.cache`**
 ```
-<YYYY-MM>:<cumulative USD>:<last session USD>
-e.g. 2026-06:0.32:0.15
+<YYYY-MM-DD>:<cumulative USD>:<last session USD>
+e.g. 2026-06-28:0.32:0.15
 ```
 
 ## Customization
 
-To change the monthly budget (default: ¥10,000):
+To change the daily budget (default: ¥500):
 
 `statusline.sh`:
 ```bash
-budget_jpy=10000  # change this value
+budget_jpy=500  # change this value
 ```
 
 `statusline.ps1`:
 ```powershell
-$pct = [Math]::Min([int]($totalJpy * 100 / 10000), 100)  # change 10000
+$budgetJpy = 500  # change this value
 ```
 
 ## Troubleshooting
@@ -181,10 +185,11 @@ If you get `command not found` for `jq` or `bc`, installing the missing tool wil
 
 ## Notes
 
-- **Subscription plans (Pro/Max) do not expose cost data** — the Cost field will not appear. Only API key usage and Azure AI Foundry are supported.
-- Costs shown are estimates based on Claude Code's reported token usage and may not exactly match your Anthropic invoice
-- JPY conversion uses a weekly-cached exchange rate from ECB and will not reflect real-time fluctuations. Falls back to ¥160/USD if the API is unreachable (indicated by `~` prefix)
+- **Subscription plans (Pro/Max)** show cost with a `~` prefix — this is an API-equivalent estimate, not your actual billing amount
+- **API key and Azure AI Foundry** show cost without `~` — this reflects actual token spend
+- JPY conversion uses a weekly-cached exchange rate from ECB and will not reflect real-time fluctuations. If the rate hasn't been fetched yet, the Cost field is simply not shown
 - When using Azure AI Foundry, costs are estimated based on Anthropic's public pricing and may differ from your actual Azure bill
+- The `Acct:` field requires an active Claude.ai OAuth session (`~/.claude/.credentials.json`) and is not available to API key users
 
 ## License
 
