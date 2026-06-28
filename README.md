@@ -8,13 +8,13 @@ A statusline for [Claude Code](https://claude.ai/code) that shows model, rate li
 ## Preview
 
 ```
-Sonnet4.6(high) Session:45%(14:30) Week:20%(2d3h) Ctx:▰▰▱▱▱40% Cost:▰▱▱▱▱~$0.15(¥230/¥500)
+Sonnet4.6(high) Session:45%(14:30) Week:20%(2d3h) Ctx:▰▰▱▱▱40% Acct:▰▱▱▱▱15%
 ```
 
-Over budget (Opus, subscription):
+API key user, over budget:
 
 ```
-!!Opus4.8(high) Session:72%(15:05) Week:55%(1d3h) Ctx:▰▰▰▱▱60% Cost:!!▰▰▰▰▰~$3.20(¥510/¥500) Acct:▰▰▱▱▱35%
+!!Opus4.8(high) Ctx:▰▰▰▱▱60% Cost:!!▰▰▰▰▰$3.20(¥510/¥500)
 ```
 
 ## Features
@@ -25,7 +25,7 @@ Over budget (Opus, subscription):
 | `Session:XX%(HH:MM)` | 5-hour rate limit usage and reset time (wall clock) |
 | `Week:XX%(XdXh)` | 7-day rate limit usage and time until reset |
 | `Ctx:▰▰▱▱▱XX%` | Context window usage (5-segment bar) |
-| `Cost:▰▱▱▱▱~$X.XX(¥XXX/¥500)` | Daily cost in USD + JPY with budget bar (`~` on subscription plans) |
+| `Cost:▰▱▱▱▱$X.XX(¥XXX/¥500)` | Daily cost in USD + JPY with budget bar |
 | `Acct:▰▱▱▱▱XX%` | Account monthly usage via Anthropic OAuth API (subscription only) |
 
 **Cost display behavior:**
@@ -33,8 +33,7 @@ Over budget (Opus, subscription):
 - Resets automatically at midnight each day
 - Exchange rate fetched weekly from ECB (European Central Bank) via [frankfurter.app](https://www.frankfurter.app/)
 - If the exchange rate hasn't been fetched yet, the Cost field is not shown until the background refresh completes
-- **Shown on subscription plans (Pro/Max)** with a `~` prefix indicating it's an API-equivalent estimate, not actual billing
-- **Shown on API key / Azure AI Foundry** without the `~` prefix (reflects actual cost)
+- **Not shown on subscription plans (Pro/Max)** — `cost.total_cost_usd` is always 0 for subscribers
 - Shows `!!` prefix when the ¥500 daily budget is exceeded
 
 ## Platform Support
@@ -185,8 +184,8 @@ If you get `command not found` for `jq` or `bc`, installing the missing tool wil
 
 ## Notes
 
-- **Subscription plans (Pro/Max)** show cost with a `~` prefix — this is an API-equivalent estimate, not your actual billing amount
-- **API key and Azure AI Foundry** show cost without `~` — this reflects actual token spend
+- **Subscription plans (Pro/Max)** do not show the Cost field — `cost.total_cost_usd` is always 0 for subscribers
+- **API key and Azure AI Foundry** show the Cost field reflecting actual token spend
 - JPY conversion uses a weekly-cached exchange rate from ECB and will not reflect real-time fluctuations. If the rate hasn't been fetched yet, the Cost field is simply not shown
 - When using Azure AI Foundry, costs are estimated based on Anthropic's public pricing and may differ from your actual Azure bill
 - The `Acct:` field requires an active Claude.ai OAuth session (`~/.claude/.credentials.json`) and is not available to API key users

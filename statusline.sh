@@ -192,9 +192,7 @@ if [ -n "$cost_usd" ] && [ -n "$jpy_rate" ]; then
         [ -n "$out" ] && out="$out "
         warn=""
         [ $pct -ge 100 ] && warn="!!"
-        cost_est=""
-        [ -n "$h5_pct" ] && cost_est="~"
-        out="${out}${C_DIM}Cost:${C_RESET}${c}${warn}${bar}${cost_est}\$${cost_fmt}${C_RESET}(¥${total_jpy}/¥500)"
+        out="${out}${C_DIM}Cost:${C_RESET}${c}${warn}${bar}\$${cost_fmt}${C_RESET}(¥${total_jpy}/¥500)"
     fi
 fi
 

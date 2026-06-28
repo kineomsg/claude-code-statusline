@@ -180,10 +180,9 @@ if ($null -ne $costUsd -and $null -ne $jpyRate) {
         $filledBar  = "▰" * $filled
         $emptyBar   = "▱" * (5 - $filled)
         $warn       = if ($pct -ge 100) { "!!" } else { "" }
-        $costEst    = if ($null -ne $h5_pct) { "~" } else { "" }
         $costFmt    = "{0:F2}" -f $totalUsd
         if ($out) { $out += " " }
-        $out += "${C_DIM}Cost:${C_RESET}${c}${warn}${filledBar}${C_DIM}${emptyBar}${C_RESET}${c}${costEst}`$${costFmt}${C_RESET}(¥${totalJpy}/¥500)"
+        $out += "${C_DIM}Cost:${C_RESET}${c}${warn}${filledBar}${C_DIM}${emptyBar}${C_RESET}${c}`$${costFmt}${C_RESET}(¥${totalJpy}/¥500)"
     }
 }
 
