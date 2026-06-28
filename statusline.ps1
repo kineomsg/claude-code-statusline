@@ -1,12 +1,29 @@
 param()
-$raw = [Console]::In.ReadToEnd()
+$raw  = [Console]::In.ReadToEnd()
 $data = $raw | ConvertFrom-Json
-$now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$now  = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+
+# === Color Palette (Claude Gradient) ===
+$ESC      = [char]0x1b
+$C_RESET  = "$ESC[0m"
+$C_PURPLE = "$ESC[38;2;167;139;250m"   # model name
+$C_GREEN  = "$ESC[38;2;130;180;100m"   # healthy (<60%)
+$C_AMBER  = "$ESC[38;2;229;192;123m"   # warning (>=60%)
+$C_RED    = "$ESC[38;2;224;108;117m"   # critical (>=80%) / Opus !!
+$C_DIM    = "$ESC[38;2;92;99;112m"     # labels
+
+function Get-ColorForPct($pct) {
+    if ($pct -ge 80) { return $C_RED }
+    elseif ($pct -ge 60) { return $C_AMBER }
+    else { return $C_GREEN }
+}
 
 function Get-ResetHM($ts) {
     $diff = $ts - $now
     if ($diff -le 0) { return "soon" }
-    return [DateTimeOffset]::FromUnixTimeSeconds($ts).ToLocalTime().ToString("HH:mm")
+    $h = [Math]::Floor($diff / 3600)
+    $m = [Math]::Floor(($diff % 3600) / 60)
+    return "${h}h${m}m"
 }
 
 function Get-ResetDH($ts) {
@@ -19,35 +36,51 @@ function Get-ResetDH($ts) {
     return "${h}h${m}m"
 }
 
-$h5_pct_raw  = $data.rate_limits.five_hour.used_percentage
-$h5_reset    = $data.rate_limits.five_hour.resets_at
-$d7_pct_raw  = $data.rate_limits.seven_day.used_percentage
-$d7_reset    = $data.rate_limits.seven_day.resets_at
-$ctx_pct_raw = $data.context_window.used_percentage
+# Model info
+$modelId      = $data.model.id
+$modelDisplay = $data.model.display_name
 
+# Rate limits
+$h5_pct   = if ($null -ne $data.rate_limits.five_hour.used_percentage)  { [int]$data.rate_limits.five_hour.used_percentage }  else { $null }
+$h5_reset = $data.rate_limits.five_hour.resets_at
+$d7_pct   = if ($null -ne $data.rate_limits.seven_day.used_percentage)  { [int]$data.rate_limits.seven_day.used_percentage }  else { $null }
+$d7_reset = $data.rate_limits.seven_day.resets_at
+$ctx_pct  = if ($null -ne $data.context_window.used_percentage) { [int]$data.context_window.used_percentage } else { $null }
+
+# Model prefix
 $out = ""
-if ($null -ne $h5_pct_raw) {
-    $h5_pct = [Math]::Floor([double]$h5_pct_raw)
+if ($modelDisplay) {
+    $modelShort = $modelDisplay -replace ' ', ''
+    if ($modelId -match 'opus') {
+        $out = "${C_RED}!!${modelShort}${C_RESET}"
+    } else {
+        $out = "${C_PURPLE}${modelShort}${C_RESET}"
+    }
+}
+
+if ($null -ne $h5_pct -and $h5_pct -gt 0) {
     $rst = Get-ResetHM $h5_reset
-    $out = "Session:${h5_pct}%(${rst})"
+    $c   = Get-ColorForPct $h5_pct
+    if ($out) { $out += " " }
+    $out += "${C_DIM}Session:${C_RESET}${c}${h5_pct}%${C_DIM}(${rst})${C_RESET}"
 }
-if ($null -ne $d7_pct_raw) {
-    $d7_pct = [Math]::Floor([double]$d7_pct_raw)
+if ($null -ne $d7_pct -and $d7_pct -gt 0) {
     $rst = Get-ResetDH $d7_reset
+    $c   = Get-ColorForPct $d7_pct
     if ($out) { $out += " " }
-    $out += "Week:${d7_pct}%(${rst})"
+    $out += "${C_DIM}Week:${C_RESET}${c}${d7_pct}%${C_DIM}(${rst})${C_RESET}"
 }
-if ($null -ne $ctx_pct_raw) {
-    $ctx_pct = [Math]::Floor([double]$ctx_pct_raw)
-    $filled = [Math]::Floor($ctx_pct / 20)
-    $bar = ("▰" * $filled) + ("▱" * (5 - $filled))
+if ($null -ne $ctx_pct) {
+    $filled     = [Math]::Floor($ctx_pct / 20)
+    $filledBar  = "▰" * $filled
+    $emptyBar   = "▱" * (5 - $filled)
+    $c          = Get-ColorForPct $ctx_pct
     if ($out) { $out += " " }
-    $out += "Ctx:${bar}${ctx_pct}%"
+    $out += "${C_DIM}Ctx:${C_RESET}${c}${filledBar}${C_DIM}${emptyBar}${C_RESET}${c}${ctx_pct}%${C_RESET}"
 }
 
 # JPY rate cache (weekly refresh via ECB/frankfurter.app)
-$jpyCachePath = Join-Path $HOME ".claude" "jpy_rate.cache"
-$null = New-Item -ItemType Directory -Force -Path (Join-Path $HOME ".claude")
+$jpyCachePath = "$HOME\.claude\jpy_rate.cache"
 $jpyRate = $null
 if (Test-Path $jpyCachePath) {
     $parts = (Get-Content $jpyCachePath -Raw).Trim() -split ":", 2
@@ -55,53 +88,48 @@ if (Test-Path $jpyCachePath) {
         $jpyRate = [double]$parts[1]
     }
 }
-$jpyRateFallback = $false
 if ($null -eq $jpyRate) {
     try {
-        $resp = Invoke-RestMethod -Uri "https://api.frankfurter.app/latest?from=USD&to=JPY" -TimeoutSec 1
+        $resp    = Invoke-RestMethod -Uri "https://api.frankfurter.app/latest?from=USD&to=JPY" -TimeoutSec 3
         $jpyRate = $resp.rates.JPY
         "${now}:${jpyRate}" | Set-Content $jpyCachePath
-    } catch {
-        $jpyRate = 160
-        $jpyRateFallback = $true
-    }
+    } catch {}
 }
 
-# Budget tracking (monthly, max ¥10,000)
+# Daily cost tracking (¥500/day — ¥10,000/month ÷ 20 business days)
 $costUsd = $data.cost.total_cost_usd
 if ($null -ne $costUsd -and $null -ne $jpyRate) {
-    $budgetCachePath = Join-Path $HOME ".claude" "cost_budget.cache"
-    $curMonth = (Get-Date).ToString("yyyy-MM")
-    $cumulativeUsd = 0.0
-    $lastSessionUsd = 0.0
+    $budgetCachePath = "$HOME\.claude\cost_budget.cache"
+    $curDate         = (Get-Date).ToString("yyyy-MM-dd")
+    $cumulativeUsd   = 0.0
+    $lastSessionUsd  = 0.0
 
     if (Test-Path $budgetCachePath) {
         $parts = (Get-Content $budgetCachePath -Raw).Trim() -split ":", 3
-        if ($parts.Count -eq 3 -and $parts[0] -eq $curMonth) {
+        if ($parts.Count -eq 3 -and $parts[0] -eq $curDate) {
             $cumulativeUsd  = [double]$parts[1]
             $lastSessionUsd = [double]$parts[2]
         }
     }
 
-    if ($costUsd -lt $lastSessionUsd) {
-        $cumulativeUsd += $lastSessionUsd
-    }
-    "${curMonth}:${cumulativeUsd}:${costUsd}" | Set-Content $budgetCachePath
+    if ($costUsd -lt $lastSessionUsd) { $cumulativeUsd += $lastSessionUsd }
+    "${curDate}:${cumulativeUsd}:${costUsd}" | Set-Content $budgetCachePath
 
     $totalUsd = $cumulativeUsd + $costUsd
     $totalJpy = [int]($totalUsd * $jpyRate)
 
     if ($totalJpy -gt 0) {
-        $pct    = [Math]::Min([int]($totalJpy * 100 / 10000), 100)
-        $filled = [Math]::Floor($pct / 20)
-        $bar    = ("▰" * $filled) + ("▱" * (5 - $filled))
-        $warn   = if ($pct -ge 100) { "!!" } else { "" }
-        $approx = if ($jpyRateFallback) { "~" } else { "" }
-        $costFmt  = "{0:F2}" -f $totalUsd
-        $jpyWhole = [int]($totalJpy / 1000)
-        $jpyDec   = [int](($totalJpy % 1000) / 100)
+        $budgetJpy  = 500
+        $pct        = [Math]::Min([int]($totalJpy * 100 / $budgetJpy), 100)
+        $filled     = [Math]::Floor($pct / 20)
+        $c          = Get-ColorForPct $pct
+        $filledBar  = "▰" * $filled
+        $emptyBar   = "▱" * (5 - $filled)
+        $warn       = if ($pct -ge 100) { "!!" } else { "" }
+        $costEst    = if ($null -ne $h5_pct -and $h5_pct -gt 0) { "~" } else { "" }
+        $costFmt    = "{0:F2}" -f $totalUsd
         if ($out) { $out += " " }
-        $out += "Cost:${warn}${bar}`$${costFmt}(${approx}¥${jpyWhole}.${jpyDec}k/¥10k)"
+        $out += "${C_DIM}Cost:${C_RESET}${c}${warn}${filledBar}${C_DIM}${emptyBar}${C_RESET}${c}${costEst}`$${costFmt}${C_RESET}(¥${totalJpy}/¥500)"
     }
 }
 
