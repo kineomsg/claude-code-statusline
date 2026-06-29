@@ -183,6 +183,7 @@ if [ -n "$cost_usd" ] && [ -n "$jpy_rate" ]; then
 
     total_usd=$(echo "$cumulative_usd + $cost_usd" | bc)
     total_jpy=$(echo "scale=6; $total_usd * $jpy_rate" | bc | awk '{printf "%d", $1 + 0.5}')
+    session_jpy=$(echo "scale=6; $cost_usd * $jpy_rate" | bc | awk '{printf "%d", $1 + 0.5}')
 
     if [ "${total_jpy:-0}" -gt 0 ] 2>/dev/null; then
         budget_jpy=500
@@ -195,11 +196,10 @@ if [ -n "$cost_usd" ] && [ -n "$jpy_rate" ]; then
         for ((i=1; i<=filled; i++)); do filled_bar="${filled_bar}▰"; done
         for ((i=1; i<=empty; i++)); do empty_bar="${empty_bar}▱"; done
         bar="${filled_bar}${C_DIM}${empty_bar}"
-        cost_fmt=$(printf "%.2f" "$total_usd")
         [ -n "$out" ] && out="$out "
         warn=""
         [ $pct -ge 100 ] && warn="!!"
-        out="${out}${C_DIM}Cost:${C_RESET}${c}${warn}${bar}\$${cost_fmt}${C_RESET}(¥${total_jpy}/¥500)"
+        out="${out}${C_DIM}Cost:${C_RESET}${c}${warn}${bar}${C_RESET}${C_DIM}(${C_RESET}${c}¥${session_jpy}${C_RESET} ${C_DIM}Today:${C_RESET}${c}¥${total_jpy}${C_DIM}/¥500)${C_RESET}"
     fi
 fi
 
