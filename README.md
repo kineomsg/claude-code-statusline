@@ -43,8 +43,9 @@ API key user, over daily budget (multiple sessions — current session ¥200, da
 | `Acct:▰▱▱▱▱XX%` | Account spending vs. monthly limit (API key users with a spending limit set) |
 
 **Cost display behavior:**
-- Accumulates cost across sessions within the same day
-- Resets automatically at midnight each day
+- First value (`¥XXX`) is the **current session** cost in JPY
+- `Today:¥XXX/¥500` is the **daily cumulative** cost (all sessions today) vs the ¥500 budget
+- Daily total accumulates across sessions and resets automatically at midnight
 - Exchange rate fetched weekly from ECB (European Central Bank) via [frankfurter.app](https://www.frankfurter.app/)
 - If the exchange rate hasn't been fetched yet, the Cost field is not shown until the background refresh completes
 - **Not shown on subscription plans (Pro/Max)** — `cost.total_cost_usd` is always 0 for subscribers
