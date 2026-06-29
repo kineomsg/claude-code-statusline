@@ -104,48 +104,6 @@ if ($null -eq $jpyRate) {
     } catch {}
 }
 
-# Anthropic OAuth account usage (5-minute cache)
-$oauthCachePath = "$HOME\.claude\oauth_usage.cache"
-$oauthPct = $null
-if (Test-Path $oauthCachePath) {
-    $oauthAge = ((Get-Date) - (Get-Item $oauthCachePath).LastWriteTime).TotalSeconds
-    if ($oauthAge -lt 300) {
-        $oauthContent = Get-Content $oauthCachePath -Raw
-        if ($null -ne $oauthContent) {
-            $oauthParts = $oauthContent.Trim() -split "`t", 3
-            if ($oauthParts.Count -ge 3) { $oauthPct = $oauthParts[2] -as [int] }
-        }
-    }
-}
-if ($null -eq $oauthPct) {
-    try {
-        $credPath = "$HOME\.claude\.credentials.json"
-        if (Test-Path $credPath) {
-            $cred  = Get-Content $credPath -Raw | ConvertFrom-Json
-            $token = $cred.claudeAiOauth.accessToken
-            if ($token) {
-                $headers = @{
-                    "Authorization"  = "Bearer $token"
-                    "anthropic-beta" = "oauth-2025-04-20"
-                    "Content-Type"   = "application/json"
-                }
-                $resp = Invoke-RestMethod -Uri "https://api.anthropic.com/api/oauth/usage" -Headers $headers
-                if ($resp.extra_usage.used_credits) {
-                    $pctVal = [int]($resp.extra_usage.utilization * 100)
-                    "$($resp.extra_usage.used_credits)`t$($resp.extra_usage.monthly_limit)`t${pctVal}" | Set-Content "${oauthCachePath}.tmp"
-                    Move-Item -Force "${oauthCachePath}.tmp" $oauthCachePath
-                    $oauthPct = $pctVal
-                } elseif ($resp.spend.used.amount_minor) {
-                    $pctVal = [int]($resp.spend.percent * 100)
-                    "$($resp.spend.used.amount_minor)`t$($resp.spend.limit.amount_minor)`t${pctVal}" | Set-Content "${oauthCachePath}.tmp"
-                    Move-Item -Force "${oauthCachePath}.tmp" $oauthCachePath
-                    $oauthPct = $pctVal
-                }
-            }
-        }
-    } catch {}
-}
-
 # Daily cost tracking (¥500/day — ¥10,000/month ÷ 20 business days)
 $costUsd = $data.cost.total_cost_usd
 if ($null -ne $costUsd -and $null -ne $jpyRate) {
@@ -185,17 +143,6 @@ if ($null -ne $costUsd -and $null -ne $jpyRate) {
         if ($out) { $out += " " }
         $out += "${C_DIM}Cost:${C_RESET}${c}${warn}${filledBar}${C_DIM}${emptyBar}${C_RESET}${c}`$${costFmt}${C_RESET}${C_DIM}(${C_RESET}${c}¥${sessionJpy}${C_RESET} ${C_DIM}Today:${C_RESET}${c}¥${totalJpy}${C_DIM}/¥500)${C_RESET}"
     }
-}
-
-# Account monthly usage (OAuth API, shown only when cache is available)
-if ($null -ne $oauthPct -and $oauthPct -gt 0) {
-    $oauthPctCapped = [Math]::Min($oauthPct, 100)
-    $filled    = [Math]::Max(0, [Math]::Min([Math]::Floor($oauthPctCapped / 20), 5))
-    $filledBar = "▰" * $filled
-    $emptyBar  = "▱" * (5 - $filled)
-    $c         = Get-ColorForPct $oauthPctCapped
-    if ($out) { $out += " " }
-    $out += "${C_DIM}Acct:${C_RESET}${c}${filledBar}${C_DIM}${emptyBar}${C_RESET}${c}${oauthPctCapped}%${C_RESET}"
 }
 
 [Console]::Write($out)

@@ -75,42 +75,6 @@ if [ -z "$jpy_rate" ]; then
     fi
 fi
 
-# === Anthropic OAuth account usage (5-minute cache, background fetch) ===
-OAUTH_CACHE="$HOME/.claude/oauth_usage.cache"
-OAUTH_LOCK="$HOME/.claude/oauth_usage.lock"
-oauth_pct=""
-if [ -f "$OAUTH_CACHE" ]; then
-    oauth_age=$(( now - $(stat_mtime "$OAUTH_CACHE") ))
-    if [ "$oauth_age" -lt 300 ]; then
-        oauth_pct=$(cut -f3 "$OAUTH_CACHE" 2>/dev/null)
-    fi
-fi
-if [ -z "$oauth_pct" ]; then
-    lock_age=$(( now - $(stat_mtime "$OAUTH_LOCK") ))
-    if [ "$lock_age" -gt 60 ]; then
-        touch "$OAUTH_LOCK" 2>/dev/null
-        (
-            token=$(jq -r '.claudeAiOauth.accessToken // empty' "$HOME/.claude/.credentials.json" 2>/dev/null)
-            if [ -n "$token" ]; then
-                json=$(curl -sf --max-time 10 "https://api.anthropic.com/api/oauth/usage" \
-                    -H "Authorization: Bearer $token" \
-                    -H "anthropic-beta: oauth-2025-04-20" \
-                    -H "Content-Type: application/json" 2>/dev/null)
-                result=$(printf '%s' "$json" | jq -r '
-                    if .extra_usage.used_credits then
-                        [.extra_usage.used_credits, .extra_usage.monthly_limit, (.extra_usage.utilization * 100 | floor)] | @tsv
-                    elif .spend.used.amount_minor then
-                        [.spend.used.amount_minor, .spend.limit.amount_minor, (.spend.percent * 100 | floor)] | @tsv
-                    else empty end' 2>/dev/null)
-                if [ -n "$result" ]; then
-                    printf '%s' "$result" > "${OAUTH_CACHE}.tmp" && mv "${OAUTH_CACHE}.tmp" "$OAUTH_CACHE"
-                fi
-            fi
-            rm -f "$OAUTH_LOCK"
-        ) >/dev/null 2>&1 &
-    fi
-fi
-
 # === Build output ===
 out=""
 
@@ -202,20 +166,6 @@ if [ -n "$cost_usd" ] && [ -n "$jpy_rate" ]; then
         cost_fmt=$(printf "%.2f" "$total_usd")
         out="${out}${C_DIM}Cost:${C_RESET}${c}${warn}${bar}\$${cost_fmt}${C_RESET}${C_DIM}(${C_RESET}${c}¥${session_jpy}${C_RESET} ${C_DIM}Today:${C_RESET}${c}¥${total_jpy}${C_DIM}/¥500)${C_RESET}"
     fi
-fi
-
-# Account monthly usage (Anthropic OAuth API, shown only when cache is available)
-if [ -n "$oauth_pct" ] && [ "$oauth_pct" -gt 0 ] 2>/dev/null; then
-    [ "$oauth_pct" -gt 100 ] && oauth_pct=100
-    filled=$(( oauth_pct / 20 ))
-    [ $filled -gt 5 ] && filled=5
-    empty=$(( 5 - filled ))
-    c=$(color_for_pct "$oauth_pct")
-    filled_bar="" empty_bar=""
-    for ((i=1; i<=filled; i++)); do filled_bar="${filled_bar}▰"; done
-    for ((i=1; i<=empty; i++)); do empty_bar="${empty_bar}▱"; done
-    [ -n "$out" ] && out="$out "
-    out="${out}${C_DIM}Acct:${C_RESET}${c}${filled_bar}${C_DIM}${empty_bar}${C_RESET}${c}${oauth_pct}%${C_RESET}"
 fi
 
 printf "%s" "$out"
