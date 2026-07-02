@@ -58,9 +58,9 @@ $out = ""
 if ($modelDisplay) {
     $modelShort = $modelDisplay -replace ' ', ''
     $modelStr   = if ($effort) { "${modelShort}(${effort})" } else { $modelShort }
-    if ($modelId -match 'opus') {
+    if ($modelId -cmatch 'opus') {
         $out = "${C_AMBER}!${modelStr}${C_RESET}"
-    } elseif ($modelId -match 'fable') {
+    } elseif ($modelId -cmatch 'fable') {
         $out = "${C_RED}!!${modelStr}${C_RESET}"
     } else {
         $out = "${C_PURPLE}${modelStr}${C_RESET}"
